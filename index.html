@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Formula 1 Grand Prix Circuits | Roads & Tracks Atlas</title>
+  <meta name="description"
+    content="Interactive world map displaying 40 legendary Formula 1 racing circuits with GeoJSON road geometries, satellite imagery, telemetry, and lap simulations.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Titillium+Web:wght@300;400;600;700;900&display=swap"
+    rel="stylesheet">
+
+  <!-- FontAwesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- Leaflet CSS (CDN with local fallback) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script>
+    // Fallback if CDN fails offline
+    if (!document.querySelector('link[href*="leaflet.css"]')) {
+      document.write('<link rel="stylesheet" href="../lib/leaflet/leaflet1.7.min.css">');
+    }
+  </script>
+
+  <!-- Application Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-logo-badge">
+        <i class="fa fa-flag-checkered"></i> F1
+      </div>
+      <div class="brand-title-wrap">
+        <h1>Grand Prix Circuits Atlas</h1>
+        <p>Formula 1 Race Tracks &amp; Road Geometries</p>
+      </div>
+    </div>
+
+    <!-- Header Stats -->
+    <div class="header-stats">
+      <div class="stat-pill" title="Total Loaded F1 Circuits">
+        <span class="val" id="totalCircuitsCount">40</span>
+        <span class="lbl">Circuits</span>
+      </div>
+      <div class="stat-pill" title="Combined Total Track Length">
+        <span class="val" id="totalDistanceKm">207 km</span>
+        <span class="lbl">Total Track</span>
+      </div>
+      <div class="stat-pill" title="Host Nations">
+        <span class="val" id="totalCountriesCount">21</span>
+        <span class="lbl">Countries</span>
+      </div>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="header-actions">
+      <button class="btn-header" id="worldOverviewBtn" title="Reset Camera to Global View">
+        <i class="fa fa-globe"></i> World View
+      </button>
+      <!-- <button class="btn-header" id="showAllTracksBtn" title="Render all 40 tracks simultaneously on the map">
+        <i class="fa fa-route"></i> Show All Tracks
+      </button> -->
+      <!-- <button class="btn-header" id="uploadBtn" title="Import another GeoJSON track file">
+        <i class="fa fa-file-circle-plus"></i> Import GeoJSON
+      </button> -->
+      <!-- <input type="file" id="fileInput" accept=".geojson,.json" style="display: none;" />
+      <a href="../index.html" class="btn-header primary" title="Return to Portal">
+        <i class="fa fa-arrow-left"></i> Main Portal
+      </a> -->
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="main-container">
+
+    <!-- Mobile Sidebar Toggle -->
+    <button class="sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="Toggle Circuit List">
+      <i class="fa fa-bars"></i>
+    </button>
+
+    <!-- Sidebar (Circuits Explorer & Filters) -->
+    <aside class="sidebar" id="sidebar">
+      <!-- Search Input -->
+      <div class="sidebar-search-box">
+        <div class="search-input-wrap">
+          <i class="fa fa-search search-icon"></i>
+          <input type="text" class="search-input" id="searchInput" placeholder="Search circuits, country, city, year..."
+            autocomplete="off" spellcheck="false">
+          <button class="clear-search-btn" id="clearSearchBtn" title="Clear Search">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Region Filter Pills in Two Lines -->
+      <div class="filter-pills-container" id="filterPillsContainer">
+        <div class="filter-pills-line">
+          <button class="filter-pill active" data-region="all">All Tracks</button>
+          <button class="filter-pill" data-region="Europe">Europe (21)</button>
+          <button class="filter-pill" data-region="Americas">Americas (8)</button>
+          <button class="filter-pill" data-region="Asia">Asia (4)</button>
+        </div>
+        <div class="filter-pills-line">
+          <button class="filter-pill" data-region="Middle East">Middle East (5)</button>
+          <button class="filter-pill" data-region="Oceania">Oceania (1)</button>
+          <button class="filter-pill" data-region="Africa">Africa (1)</button>
+        </div>
+      </div>
+
+      <!-- Sort Options -->
+      <div class="sort-options-bar">
+        <span>Order By:</span>
+        <select class="sort-select" id="sortSelect">
+          <option value="name_asc">Name (A &rarr; Z)</option>
+          <option value="name_desc">Name (Z &rarr; A)</option>
+          <option value="gps_desc">Most F1 Grands Prix Held</option>
+          <option value="gps_asc">Fewest F1 Grands Prix Held</option>
+          <option value="length_desc">Longest Track First</option>
+          <option value="length_asc">Shortest Track First</option>
+          <option value="opened_desc">Newest Opened First</option>
+          <option value="opened_asc">Oldest / Classic First</option>
+          <option value="altitude_desc">Highest Elevation</option>
+        </select>
+      </div>
+
+      <!-- Scrollable Circuits List -->
+      <div class="circuits-list-container" id="circuitsList">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </aside>
+
+    <!-- Map Canvas & Overlays -->
+    <main class="map-wrapper">
+      <div id="map"></div>
+
+      <!-- Top-Right Map Tile Mode Switcher -->
+      <div class="map-floating-panel map-tools-bar">
+        <button class="map-tool-btn active" id="tileSatelliteBtn" title="High-Resolution Satellite Imagery">
+          <i class="fa fa-satellite"></i> Satellite
+        </button>
+        <!-- <button class="map-tool-btn" id="tileDarkBtn" title="Futuristic Telemetry Dark Map">
+          <i class="fa fa-moon"></i> Dark Telemetry
+        </button> -->
+        <button class="map-tool-btn" id="tileStreetsBtn" title="OpenStreetMap Vector Road Network">
+          <i class="fa fa-map"></i> Streets
+        </button>
+      </div>
+
+      <!-- Selected Circuit Floating HUD Card -->
+      <div class="map-floating-panel circuit-hud-card" id="circuitHudCard">
+        <div class="hud-header">
+          <div>
+            <div class="hud-country-tag" id="hudCountryTag">
+              <span>🇲🇨</span> <span>Monaco</span>
+            </div>
+            <h2 class="hud-title" id="hudTitle">Circuit de Monaco</h2>
+          </div>
+          <button class="hud-close-btn" id="hudCloseBtn" title="Close Panel">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Telemetry Stats Grid -->
+        <div class="hud-grid">
+          <div class="hud-stat-box highlight">
+            <div class="label">Track Distance</div>
+            <div class="value" id="hudLengthKm">3.337 km</div>
+          </div>
+          <div class="hud-stat-box">
+            <div class="label">Miles</div>
+            <div class="value" id="hudLengthMi">2.07 mi</div>
+          </div>
+          <div class="hud-stat-box">
+            <div class="label">Inaugurated</div>
+            <div class="value" id="hudOpened">1929</div>
+          </div>
+          <div class="hud-stat-box">
+            <div class="label">Elevation</div>
+            <div class="value" id="hudAltitude">47 m</div>
+          </div>
+          <div class="hud-stat-box" style="grid-column: span 2;">
+            <div class="label">Est. Pole Lap Time (@230 km/h)</div>
+            <div class="value" id="hudEstLapTime" style="color: var(--cyan-neon);">~01:14.285</div>
+          </div>
+          <!-- F1 Grand Prix Years (Dedicated Historical Section) -->
+          <div class="hud-stat-box hud-f1-years-card" style="grid-column: span 2;">
+            <div class="hud-f1-years-header">
+              <span class="label"><i class="fa fa-flag-checkered"></i> F1 Grand Prix Years</span>
+              <span class="f1-total-gps-badge" id="hudTotalGps">10 GPs</span>
+            </div>
+            <div class="value f1-years-range" id="hudF1Years">1978, 1981–1989</div>
+            <div class="hud-gp-official-name" id="hudGpOfficialName">
+              <i class="fa fa-trophy"></i> <span id="hudGpNameText">Brazilian Grand Prix</span>
+            </div>
+            <div class="hud-years-chips-wrapper" id="hudYearsChipsWrapper">
+              <div class="hud-years-chips-scroll" id="hudYearsChips"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lap Simulation Telemetry Widget -->
+        <div class="sim-controls-panel">
+          <div class="sim-top-row">
+            <div class="sim-status-badge">
+              <span class="sim-indicator-dot" id="simStatusDot"></span>
+              <span id="simStatusText">Ready</span>
+            </div>
+            <div class="sim-timer" id="simTimer">00:00.000</div>
+          </div>
+          <div class="sim-progress-bar-bg">
+            <div class="sim-progress-bar-fill" id="simProgressBar"></div>
+          </div>
+          <div class="sim-buttons-row">
+            <button class="btn-sim" id="simStartBtn">
+              <i class="fa fa-play"></i> Simulate Lap
+            </button>
+            <button class="btn-sim secondary" id="simStopBtn" title="Stop &amp; Reset Lap">
+              <i class="fa fa-stop"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Actions Row -->
+        <div class="hud-actions-row">
+          <button class="hud-action-btn" id="downloadGeoJsonBtn" title="Download current track GeoJSON file">
+            <i class="fa fa-download"></i> GeoJSON
+          </button>
+          <button class="hud-action-btn" id="copyCoordsBtn" title="Copy coordinate array to clipboard">
+            <i class="fa fa-copy"></i> Coords
+          </button>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Leaflet JS (CDN with fallback) -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    if (typeof L === 'undefined') {
+      document.write('<script src="../lib/leaflet/leaflet1.7.min.js"><\/script>');
+    }
+  </script>
+
+  <!-- Pre-aggregated Circuits GeoJSON Dataset -->
+  <script src="circuits-data.js"></script>
+
+  <!-- App Core Script -->
+  <script src="app.js"></script>
+</body>
+
+</html>
